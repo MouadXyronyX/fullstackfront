@@ -1,0 +1,100 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    direction: rtl;
+    text-align: right;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #0a0a0a;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #C9A24B;
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #E8C97A;
+  }
+}
+
+@layer components {
+  .gold-text {
+    @apply bg-gold-gradient bg-clip-text text-transparent;
+  }
+
+  .gold-border {
+    @apply border border-gold/40;
+  }
+
+  .gold-btn {
+    @apply bg-gold-gradient text-dark font-semibold px-6 py-3 rounded-lg
+    hover:shadow-gold-hover transition-all duration-300
+    disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .dark-btn {
+    @apply bg-dark-800 gold-border text-gold px-6 py-3 rounded-lg
+    hover:bg-gold hover:text-dark hover:border-gold transition-all duration-300;
+  }
+
+  .card {
+    @apply bg-dark-800 rounded-xl shadow-card gold-border overflow-hidden
+    hover:shadow-card-hover transition-all duration-300;
+  }
+
+  .input-field {
+    @apply w-full bg-dark-900 border border-dark-700 rounded-lg px-4 py-3
+    text-cream placeholder:text-cream/40
+    focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold/50
+    transition-all duration-200;
+  }
+
+  .section-title {
+    @apply text-3xl md:text-4xl font-arabic font-bold text-center gold-text mb-2;
+  }
+
+  .islamic-divider {
+    @apply flex items-center justify-center gap-4 my-8;
+  }
+
+  .islamic-divider::before,
+  .islamic-divider::after {
+    content: '';
+    @apply h-px flex-1 bg-gradient-to-r from-transparent via-gold/50 to-transparent;
+  }
+}
+
+@layer utilities {
+  .text-shadow-gold {
+    text-shadow: 0 0 20px rgba(201, 162, 75, 0.3);
+  }
+}
+
+/* Swiper overrides */
+.swiper-button-next,
+.swiper-button-prev {
+  color: #C9A24B !important;
+}
+
+.swiper-pagination-bullet-active {
+  background: #C9A24B !important;
+}
+
+/* TinyMCE overrides for admin */
+.tox-tinymce {
+  border-color: #252525 !important;
+  border-radius: 0.5rem !important;
+}
