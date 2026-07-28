@@ -11,7 +11,7 @@ export default defineConfig({
         changeOrigin: true,
       },
       '/ws': {
-        target: 'wss://fullstackbackend-1-q93z.onrender.com',
+        target: 'https://fullstackbackend-1-q93z.onrender.com',
         ws: true,
       },
     },
