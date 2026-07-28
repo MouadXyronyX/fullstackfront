@@ -7,11 +7,11 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'https://fullstackbackend-njdo.onrender.com',
+        target: 'https://fullstackbackend-1-q93z.onrender.com',
         changeOrigin: true,
       },
       '/ws': {
-        target: 'wss://fullstackbackend-njdo.onrender.com',
+        target: 'wss://fullstackbackend-1-q93z.onrender.com',
         ws: true,
       },
     },
