@@ -65,12 +65,12 @@ export default function AdminUsers() {
   return (
     <div>
       <h1 className="text-2xl font-arabic font-bold gold-text mb-6">الحسابات</h1>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto max-h-[65vh] overflow-y-auto gold-border rounded-xl">
         <table className="w-full text-right">
-          <thead><tr className="text-cream/40 text-sm border-b border-dark-700">
-            <th className="pb-3 font-arabic">الاسم</th><th className="pb-3 font-arabic">البريد</th>
-            <th className="pb-3 font-arabic">الهاتف</th><th className="pb-3 font-arabic">الدور</th>
-            <th className="pb-3 font-arabic">الحالة</th><th className="pb-3 font-arabic">كلمة السر</th><th className="pb-3 font-arabic">الإجراءات</th>
+          <thead><tr className="text-cream/40 text-sm border-b border-dark-700 sticky top-0 bg-dark-900">
+            <th className="pb-3 pt-3 font-arabic">الاسم</th><th className="pb-3 pt-3 font-arabic">البريد</th>
+            <th className="pb-3 pt-3 font-arabic">الهاتف</th><th className="pb-3 pt-3 font-arabic">الدور</th>
+            <th className="pb-3 pt-3 font-arabic">الحالة</th><th className="pb-3 pt-3 font-arabic">كلمة السر</th><th className="pb-3 pt-3 font-arabic">الإجراءات</th>
           </tr></thead>
           <tbody>
             {users.map(u => (

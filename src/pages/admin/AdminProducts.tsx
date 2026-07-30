@@ -116,12 +116,14 @@ export default function AdminProducts() {
 
       {loading ? (
         <div className="space-y-3">{[1,2,3,4,5].map(i => <div key={i} className="h-16 bg-dark-800 animate-pulse rounded-lg" />)}</div>
+      ) : products.length === 0 ? (
+        <div className="text-center py-12 text-cream/40">لا توجد منتجات</div>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto max-h-[65vh] overflow-y-auto gold-border rounded-xl">
           <table className="w-full text-right">
-            <thead><tr className="text-cream/40 text-sm border-b border-dark-700">
-              <th className="pb-3 font-arabic">الاسم</th><th className="pb-3 font-arabic">السعر</th>
-              <th className="pb-3 font-arabic">التصنيف</th><th className="pb-3 font-arabic">الحالة</th><th className="pb-3 font-arabic">الإجراءات</th>
+            <thead><tr className="text-cream/40 text-sm border-b border-dark-700 sticky top-0 bg-dark-900">
+              <th className="pb-3 pt-3 font-arabic">الاسم</th><th className="pb-3 pt-3 font-arabic">السعر</th>
+              <th className="pb-3 pt-3 font-arabic">التصنيف</th><th className="pb-3 pt-3 font-arabic">الحالة</th><th className="pb-3 pt-3 font-arabic">الإجراءات</th>
             </tr></thead>
             <tbody>
               {products.map(p => (

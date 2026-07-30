@@ -54,12 +54,12 @@ export default function AdminOrders() {
       {loading ? (
         <div className="space-y-3">{[1,2,3,4,5].map(i => <div key={i} className="h-16 bg-dark-800 animate-pulse rounded-lg" />)}</div>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto max-h-[65vh] overflow-y-auto gold-border rounded-xl">
           <table className="w-full text-right">
-            <thead><tr className="text-cream/40 text-sm border-b border-dark-700">
-              <th className="pb-3 font-arabic">الرمز</th><th className="pb-3 font-arabic">العميل</th>
-              <th className="pb-3 font-arabic">الهاتف</th><th className="pb-3 font-arabic">المجموع</th>
-              <th className="pb-3 font-arabic">الحالة</th><th className="pb-3 font-arabic">التاريخ</th><th className="pb-3 font-arabic"></th>
+            <thead><tr className="text-cream/40 text-sm border-b border-dark-700 sticky top-0 bg-dark-900">
+              <th className="pb-3 pt-3 font-arabic">الرمز</th><th className="pb-3 pt-3 font-arabic">العميل</th>
+              <th className="pb-3 pt-3 font-arabic">الهاتف</th><th className="pb-3 pt-3 font-arabic">المجموع</th>
+              <th className="pb-3 pt-3 font-arabic">الحالة</th><th className="pb-3 pt-3 font-arabic">التاريخ</th><th className="pb-3 pt-3 font-arabic"></th>
             </tr></thead>
             <tbody>
               {orders.map(o => (
