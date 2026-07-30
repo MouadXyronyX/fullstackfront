@@ -85,6 +85,7 @@ export default function ProductDetailPage() {
     ? product.variants.filter(v => v.image_url).map(v => ({ image_url: v.image_url!, name: v.name }))
     : [];
   const allImages = [...(product.images || []), ...variantImages];
+  const selectedVariantImage = selectedVariant?.image_url;
 
   return (
     <div>
@@ -100,21 +101,27 @@ export default function ProductDetailPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <motion.div initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }}>
-              <Swiper
-                thumbs={{ swiper: thumbsSwiper && !thumbsSwiper.destroyed ? thumbsSwiper : undefined }}
-                modules={[Thumbs, FreeMode]}
-                className="rounded-xl overflow-hidden gold-border"
-              >
-                {(allImages.length > 0 ? allImages : product.images).map((img, i) => (
-                  <SwiperSlide key={i}>
-                    <div className="h-96 md:h-[500px]">
-                      <img src={img.image_url} alt={`${product.name} - ${i + 1}`} className="w-full h-full object-cover" />
-                    </div>
-                  </SwiperSlide>
-                ))}
-              </Swiper>
+              {selectedVariantImage ? (
+                <div className="rounded-xl overflow-hidden gold-border h-96 md:h-[500px]">
+                  <img src={selectedVariantImage} alt={selectedVariant?.name || ''} className="w-full h-full object-cover" />
+                </div>
+              ) : (
+                <Swiper
+                  thumbs={{ swiper: thumbsSwiper && !thumbsSwiper.destroyed ? thumbsSwiper : undefined }}
+                  modules={[Thumbs, FreeMode]}
+                  className="rounded-xl overflow-hidden gold-border"
+                >
+                  {(allImages.length > 0 ? allImages : product.images).map((img, i) => (
+                    <SwiperSlide key={i}>
+                      <div className="h-96 md:h-[500px]">
+                        <img src={img.image_url} alt={`${product.name} - ${i + 1}`} className="w-full h-full object-cover" />
+                      </div>
+                    </SwiperSlide>
+                  ))}
+                </Swiper>
+              )}
 
-              {allImages.length > 1 && (
+              {!selectedVariantImage && allImages.length > 1 && (
                 <Swiper
                   onSwiper={setThumbsSwiper}
                   spaceBetween={10}
@@ -156,7 +163,7 @@ export default function ProductDetailPage() {
                     {product.variants.map(v => (
                       <button
                         key={v.id}
-                        onClick={() => setSelectedVariant(v)}
+                        onClick={() => setSelectedVariant(prev => prev?.id === v.id ? null : v)}
                         className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all ${
                           selectedVariant?.id === v.id
                             ? 'border-gold bg-gold/10 text-gold'
