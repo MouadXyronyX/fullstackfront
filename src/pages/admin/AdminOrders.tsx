@@ -13,11 +13,17 @@ export default function AdminOrders() {
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
-  useEffect(() => {
-    setLoading(true);
+  const fetchOrders = (silent = false) => {
+    if (!silent) setLoading(true);
     const params: any = {};
     if (statusFilter !== 'all') params.status = statusFilter;
-    ordersAPI.list(params).then(res => setOrders(res.data)).catch(() => {}).finally(() => setLoading(false));
+    ordersAPI.list(params).then(res => setOrders(res.data)).catch(() => {}).finally(() => { if (!silent) setLoading(false); });
+  };
+
+  useEffect(() => {
+    fetchOrders();
+    const interval = setInterval(() => fetchOrders(true), 5000);
+    return () => clearInterval(interval);
   }, [statusFilter]);
 
   const handleStatusChange = async (orderId: number, status: string) => {
