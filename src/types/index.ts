@@ -9,6 +9,15 @@ export interface User {
   created_at?: string;
 }
 
+export interface ProductVariant {
+  id?: number;
+  product_id?: number;
+  name: string;
+  price?: number | null;
+  image_url?: string | null;
+  is_available: boolean;
+}
+
 export interface Product {
   id: number;
   name: string;
@@ -18,6 +27,7 @@ export interface Product {
   is_available: boolean;
   created_at?: string;
   images: ProductImage[];
+  variants: ProductVariant[];
 }
 
 export interface ProductImage {
@@ -37,6 +47,7 @@ export interface Category {
 export interface CartItem {
   product: Product;
   quantity: number;
+  variant?: ProductVariant | null;
 }
 
 export interface Order {
@@ -62,6 +73,8 @@ export interface OrderItem {
   quantity: number;
   price_at_order: number;
   product_name?: string;
+  variant_id?: number;
+  variant_name?: string;
 }
 
 export type OrderStatus = 'pending' | 'accepted' | 'preparing' | 'shipped' | 'delivered' | 'cancelled';
@@ -69,7 +82,7 @@ export type OrderStatus = 'pending' | 'accepted' | 'preparing' | 'shipped' | 'de
 export interface Chat {
   id: number;
   user_id?: number;
-  user?: { name: string };
+  user?: { name: string; email?: string; phone?: string };
   guest_identifier?: string;
   product_id?: number;
   is_active: boolean;

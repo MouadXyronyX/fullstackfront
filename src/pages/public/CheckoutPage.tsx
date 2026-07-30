@@ -38,44 +38,40 @@ export default function CheckoutPage() {
     }
   }, [user, isAuthenticated]);
 
-  // Redirect if cart empty
-  if (items.length === 0 && !orderResult) {
-    return (
-      <div className="pt-28 max-w-7xl mx-auto px-4 py-16 text-center">
-        <HiOutlineShoppingBag className="w-20 h-20 mx-auto text-cream/20 mb-4" />
-        <h1 className="text-2xl font-arabic text-cream/60 mb-4">السلة فارغة</h1>
-        <Link to="/products" className="gold-btn inline-block">تصفح المنتجات</Link>
-      </div>
-    );
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.guest_name || !form.guest_phone || !form.wilaya || !form.commune) {
+      toast.error('يرجى ملء الحقول الإلزامية');
+      return;
+    }
     if (!captchaToken) {
-      toast.error('يرجى تأكيد أنك لست روبوتاً');
+      toast.error('يرجى التحقق من أنك لست روبوت');
       return;
     }
-    if (!form.guest_name || !form.guest_phone || !form.wilaya || !form.commune || !form.address) {
-      toast.error('يرجى ملء جميع الحقول المطلوبة');
-      return;
-    }
-
     setSubmitting(true);
     try {
-      const res = await ordersAPI.create({
-        ...form,
+      const orderData = {
+        guest_name: form.guest_name,
+        guest_phone: form.guest_phone,
+        guest_email: form.guest_email || undefined,
+        wilaya: form.wilaya,
+        commune: form.commune,
+        address: form.address || undefined,
+        note: form.note || undefined,
         items: items.map(item => ({
           product_id: item.product.id,
           quantity: item.quantity,
-          price_at_order: item.product.price,
+          price_at_order: item.variant?.price ?? item.product.price,
+          variant_id: item.variant?.id || undefined,
+          variant_name: item.variant?.name || undefined,
         })),
         captcha_token: captchaToken,
-      });
+      };
+      const res = await ordersAPI.create(orderData);
       setOrderResult({ order_code: res.data.order_code });
       clearCart();
-      toast.success('تم إنشاء الطلب بنجاح!');
     } catch {
-      // error handled by interceptor
+      toast.error('فشل إتمام الطلب. حاول مرة أخرى.');
     } finally {
       setSubmitting(false);
     }
@@ -83,20 +79,31 @@ export default function CheckoutPage() {
 
   if (orderResult) {
     return (
-      <div className="pt-28 max-w-lg mx-auto px-4 py-16 text-center">
-        <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-          <HiOutlineShoppingBag className="w-10 h-10 text-green-400" />
-        </motion.div>
-        <h1 className="text-3xl font-arabic font-bold gold-text mb-4">تم استلام طلبك</h1>
-        <p className="text-cream/70 mb-6">رقم تتبع الطلب:</p>
-        <div className="text-2xl font-mono font-bold gold-text bg-dark-800 gold-border rounded-xl p-4 mb-8">
-          {orderResult.order_code}
+      <div className="pt-28 max-w-2xl mx-auto px-4 py-16 text-center">
+        <div className="card p-8">
+          <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+          </div>
+          <h2 className="text-2xl font-arabic font-bold gold-text mb-2">تم استلام طلبك بنجاح!</h2>
+          <p className="text-cream/60 mb-4">رقم التتبع الخاص بك هو</p>
+          <p className="text-3xl font-mono font-bold text-cream mb-6">{orderResult.order_code}</p>
+          <p className="text-cream/40 text-sm mb-6">يمكنك تتبع طلبك في أي وقت باستخدام هذا الرقم</p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Link to={`/track-order`} className="gold-btn px-8 py-3">تتبع الطلب</Link>
+            <Link to="/" className="dark-btn px-8 py-3">العودة للرئيسية</Link>
+          </div>
         </div>
-        <p className="text-cream/50 text-sm mb-8">احتفظ برقم التتبع لمتابعة حالة طلبك</p>
-        <div className="flex gap-4 justify-center">
-          <Link to="/track-order" className="gold-btn">تتبع الطلب</Link>
-          <Link to="/" className="dark-btn">العودة للرئيسية</Link>
-        </div>
+      </div>
+    );
+  }
+
+  if (items.length === 0) {
+    return (
+      <div className="pt-28 max-w-2xl mx-auto px-4 py-16 text-center">
+        <HiOutlineShoppingBag className="w-20 h-20 mx-auto text-cream/20 mb-4" />
+        <h2 className="text-2xl font-arabic font-bold text-cream mb-2">السلة فارغة</h2>
+        <p className="text-cream/40 mb-6">أضف منتجات إلى السلة للبدء</p>
+        <Link to="/products" className="gold-btn px-8 py-3 inline-block">تصفح المنتجات</Link>
       </div>
     );
   }
@@ -104,107 +111,95 @@ export default function CheckoutPage() {
   return (
     <div>
       <section className="relative pt-28 pb-8">
-        <div className="max-w-6xl mx-auto px-4">
-          <h1 className="text-3xl md:text-4xl font-arabic font-bold gold-text text-center mb-2">إتمام الطلب</h1>
+        <div className="max-w-7xl mx-auto px-4">
+          <h1 className="text-4xl font-arabic font-bold gold-text text-center mb-2">إتمام الطلب</h1>
           <IslamicDivider />
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
-            {/* Form */}
-            <motion.form
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              onSubmit={handleSubmit}
-              className="lg:col-span-2 space-y-6"
-            >
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
+            <div className="lg:col-span-2 space-y-6">
               <div className="card p-6">
-                <h2 className="font-arabic text-lg text-gold font-semibold mb-4">معلومات التوصيل</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <h2 className="font-arabic text-lg gold-text font-semibold mb-4">معلومات التوصيل</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm text-cream/60 mb-1">الاسم الكامل *</label>
-                    <input type="text" value={form.guest_name} onChange={e => setForm({...form, guest_name: e.target.value})} className="input-field" required />
-                  </div>
-                  <div>
-                    <label className="block text-sm text-cream/60 mb-1">رقم الهاتف *</label>
-                    <input type="tel" value={form.guest_phone} onChange={e => setForm({...form, guest_phone: e.target.value})} className="input-field" required />
+                    <label className="block text-sm text-cream/60 mb-1 font-arabic">الاسم الكامل *</label>
+                    <input type="text" value={form.guest_name} onChange={e => setForm({ ...form, guest_name: e.target.value })} className="input-field" required />
                   </div>
                   <div>
-                    <label className="block text-sm text-cream/60 mb-1">البريد الإلكتروني (اختياري)</label>
-                    <input type="email" value={form.guest_email} onChange={e => setForm({...form, guest_email: e.target.value})} className="input-field" />
+                    <label className="block text-sm text-cream/60 mb-1 font-arabic">رقم الهاتف *</label>
+                    <input type="tel" value={form.guest_phone} onChange={e => setForm({ ...form, guest_phone: e.target.value })} className="input-field" required />
                   </div>
                   <div>
-                    <label className="block text-sm text-cream/60 mb-1">الولاية *</label>
-                    <input type="text" value={form.wilaya} onChange={e => setForm({...form, wilaya: e.target.value})} className="input-field" required />
+                    <label className="block text-sm text-cream/60 mb-1 font-arabic">البريد الإلكتروني</label>
+                    <input type="email" value={form.guest_email} onChange={e => setForm({ ...form, guest_email: e.target.value })} className="input-field" />
                   </div>
                   <div>
-                    <label className="block text-sm text-cream/60 mb-1">البلدية *</label>
-                    <input type="text" value={form.commune} onChange={e => setForm({...form, commune: e.target.value})} className="input-field" required />
+                    <label className="block text-sm text-cream/60 mb-1 font-arabic">الولاية *</label>
+                    <input type="text" value={form.wilaya} onChange={e => setForm({ ...form, wilaya: e.target.value })} className="input-field" required />
                   </div>
-                  <div className="sm:col-span-2">
-                    <label className="block text-sm text-cream/60 mb-1">العنوان التفصيلي *</label>
-                    <textarea value={form.address} onChange={e => setForm({...form, address: e.target.value})} className="input-field h-20" required />
+                  <div>
+                    <label className="block text-sm text-cream/60 mb-1 font-arabic">البلدية *</label>
+                    <input type="text" value={form.commune} onChange={e => setForm({ ...form, commune: e.target.value })} className="input-field" required />
                   </div>
-                  <div className="sm:col-span-2">
-                    <label className="block text-sm text-cream/60 mb-1">ملاحظة للبائع (اختياري)</label>
-                    <textarea value={form.note} onChange={e => setForm({...form, note: e.target.value})} className="input-field h-20" />
+                  <div className="md:col-span-2">
+                    <label className="block text-sm text-cream/60 mb-1 font-arabic">العنوان التفصيلي <span className="text-cream/30">(اختياري)</span></label>
+                    <textarea value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} className="input-field" rows={2} />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm text-cream/60 mb-1 font-arabic">ملاحظة</label>
+                    <textarea value={form.note} onChange={e => setForm({ ...form, note: e.target.value })} className="input-field" rows={2} placeholder="أي ملاحظات إضافية..." />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <div className="card p-6">
+                <h2 className="font-arabic text-lg gold-text font-semibold mb-4">ملخص الطلب</h2>
+                <div className="space-y-3 max-h-80 overflow-y-auto">
+                  {items.map(item => (
+                    <div key={`${item.product.id}-${item.variant?.id || ''}`} className="flex items-center gap-3 bg-dark-800 rounded-lg p-2">
+                      <img src={item.product.images?.[0]?.image_url || ''} alt={item.product.name} className="w-14 h-14 object-cover rounded-lg" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-cream font-semibold truncate">{item.product.name}</p>
+                        {item.variant && <p className="text-xs text-gold/70">{item.variant.name}</p>}
+                        <p className="text-xs text-cream/60">{item.quantity} × {(item.variant?.price ?? item.product.price).toLocaleString()} د.ج</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="border-t border-dark-700 mt-4 pt-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-cream/60">المجموع</span>
+                    <span className="gold-text font-bold text-xl">{totalPrice.toLocaleString()} د.ج</span>
                   </div>
                 </div>
               </div>
 
               <div className="card p-6">
-                <h2 className="font-arabic text-lg text-gold font-semibold mb-4">طريقة الدفع</h2>
-                <div className="flex items-center gap-3 p-4 bg-dark-700 rounded-lg">
-                  <input type="radio" checked readOnly className="accent-gold" />
-                  <span className="text-cream">الدفع عند الاستلام (COD)</span>
-                </div>
+                <h2 className="font-arabic text-lg gold-text font-semibold mb-4">طريقة الدفع</h2>
+                <label className="flex items-center gap-3 p-3 bg-dark-800 rounded-lg cursor-pointer">
+                  <input type="radio" name="payment" checked readOnly className="accent-gold" />
+                  <div>
+                    <p className="text-sm text-cream font-semibold">الدفع عند الاستلام</p>
+                    <p className="text-xs text-cream/40">ادفع نقدًا عند استلام الطلب</p>
+                  </div>
+                </label>
               </div>
 
               <div className="flex justify-center">
                 <ReCAPTCHA
-                  sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY || '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI'}
-                  onChange={setCaptchaToken}
+                  sitekey="6LfL9dEqAAAAAG0_6FAvCMFzU7jQpB3fyhBccbrn"
                   theme="dark"
+                  onChange={(token) => setCaptchaToken(token)}
                 />
               </div>
 
-              <button type="submit" disabled={submitting} className="gold-btn w-full text-lg py-4 flex items-center justify-center gap-2">
-                {submitting ? 'جاري المعالجة...' : (
-                  <>
-                    تأكيد الطلب
-                    <HiOutlineArrowRight className="w-5 h-5" />
-                  </>
-                )}
+              <button type="submit" disabled={submitting || items.length === 0} className="gold-btn w-full py-3 flex items-center justify-center gap-2">
+                {submitting ? 'جاري المعالجة...' : 'تأكيد الطلب'}
+                <HiOutlineArrowRight className="w-5 h-5" />
               </button>
-            </motion.form>
-
-            {/* Order Summary */}
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-              <div className="card p-6 sticky top-28">
-                <h2 className="font-arabic text-lg text-gold font-semibold mb-4">ملخص الطلب</h2>
-                <div className="space-y-3 mb-4">
-                  {items.map(item => (
-                    <div key={item.product.id} className="flex items-center gap-3">
-                      <img
-                        src={item.product.images?.[0]?.image_url || ''}
-                        alt={item.product.name}
-                        className="w-14 h-14 object-cover rounded-lg"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-cream truncate">{item.product.name}</p>
-                        <p className="text-xs text-cream/50">{item.quantity} × {item.product.price.toLocaleString()} د.ج</p>
-                      </div>
-                      <p className="text-sm text-cream font-semibold">{(item.product.price * item.quantity).toLocaleString()} د.ج</p>
-                    </div>
-                  ))}
-                </div>
-                <div className="border-t border-dark-700 pt-4">
-                  <div className="flex items-center justify-between">
-                    <span className="font-arabic text-lg text-cream">المجموع</span>
-                    <span className="gold-text text-xl font-bold">{totalPrice.toLocaleString()} د.ج</span>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </div>
+            </div>
+          </form>
         </div>
       </section>
     </div>

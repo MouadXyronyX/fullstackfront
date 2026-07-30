@@ -1,82 +1,71 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HiOutlinePlus, HiOutlinePencil, HiOutlineTrash, HiOutlineSearch, HiOutlineX } from 'react-icons/hi';
+import { HiOutlinePencil, HiOutlineTrash, HiOutlinePlus, HiOutlineSearch } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import { productsAPI, categoriesAPI } from '../../services/api';
-import { Product, Category } from '../../types';
+import { Product, ProductVariant, Category } from '../../types';
 
 interface ProductForm {
-  name: string;
-  price: string;
-  description: string;
-  category_id: string;
-  is_available: boolean;
+  name: string; price: string; description: string; category_id: string; is_available: boolean;
   images: { image_url: string; order: number }[];
+  variants: { name: string; price: string; image_url: string; is_available: boolean }[];
 }
 
 const emptyForm: ProductForm = {
-  name: '', price: '', description: '', category_id: '', is_available: true, images: [{ image_url: '', order: 0 }],
+  name: '', price: '', description: '', category_id: '', is_available: true,
+  images: [{ image_url: '', order: 0 }],
+  variants: [{ name: '', price: '', image_url: '', is_available: true }],
 };
 
 export default function AdminProducts() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [modalOpen, setModalOpen] = useState(false);
+  const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [form, setForm] = useState<ProductForm>(emptyForm);
-  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState<ProductForm>({ ...emptyForm });
 
-  const loadProducts = () => {
+  const fetchProducts = () => {
+    setLoading(true);
     const params: any = {};
     if (search) params.search = search;
-    productsAPI.list(params).then(res => setProducts(res.data)).catch(() => {});
+    productsAPI.list(params).then(res => setProducts(res.data)).catch(() => {}).finally(() => setLoading(false));
   };
 
-  useEffect(() => {
-    loadProducts();
-    categoriesAPI.list().then(res => setCategories(res.data)).catch(() => {});
-  }, []);
+  useEffect(() => { fetchProducts(); }, [search]);
+  useEffect(() => { categoriesAPI.list().then(res => setCategories(res.data)).catch(() => {}); }, []);
 
-  useEffect(() => { loadProducts(); }, [search]);
+  const openCreate = () => { setEditingId(null); setForm({ ...emptyForm }); setShowModal(true); };
 
-  const openCreate = () => {
-    setEditingId(null);
-    setForm(emptyForm);
-    setModalOpen(true);
+  const openEdit = (p: Product) => {
+    setEditingId(p.id);
+    setForm({
+      name: p.name, price: String(p.price), description: p.description || '', category_id: String(p.category_id || ''),
+      is_available: p.is_available,
+      images: p.images.length ? p.images.map(i => ({ image_url: i.image_url, order: i.order })) : [{ image_url: '', order: 0 }],
+      variants: p.variants?.length ? p.variants.map(v => ({
+        name: v.name, price: v.price ? String(v.price) : '', image_url: v.image_url || '',
+        is_available: v.is_available,
+      })) : [{ name: '', price: '', image_url: '', is_available: true }],
+    });
+    setShowModal(true);
   };
 
-  const openEdit = async (id: number) => {
+  const handleSubmit = async () => {
+    if (!form.name || !form.price) { toast.error('الاسم والسعر مطلوبان'); return; }
+    const data = {
+      name: form.name, price: parseFloat(form.price),
+      description: form.description || undefined,
+      category_id: form.category_id ? parseInt(form.category_id) : undefined,
+      is_available: form.is_available,
+      images: form.images.filter(i => i.image_url.trim()).map((i, idx) => ({ image_url: i.image_url.trim(), order: i.order || idx })),
+      variants: form.variants.filter(v => v.name.trim()).map(v => ({
+        name: v.name.trim(), price: v.price ? parseFloat(v.price) : undefined,
+        image_url: v.image_url.trim() || undefined, is_available: v.is_available,
+      })),
+    };
     try {
-      const res = await productsAPI.get(id);
-      const p = res.data;
-      setEditingId(id);
-      setForm({
-        name: p.name,
-        price: String(p.price),
-        description: p.description || '',
-        category_id: p.category_id ? String(p.category_id) : '',
-        is_available: p.is_available,
-        images: p.images?.length ? p.images.map((img: any) => ({ image_url: img.image_url, order: img.order })) : [{ image_url: '', order: 0 }],
-      });
-      setModalOpen(true);
-    } catch {}
-  };
-
-  const handleSave = async () => {
-    if (!form.name || !form.price) {
-      toast.error('الاسم والسعر مطلوبان');
-      return;
-    }
-    setSaving(true);
-    try {
-      const data = {
-        ...form,
-        price: parseFloat(form.price),
-        category_id: form.category_id ? parseInt(form.category_id) : null,
-        images: form.images.filter(img => img.image_url.trim()),
-      };
-
       if (editingId) {
         await productsAPI.update(editingId, data);
         toast.success('تم تحديث المنتج');
@@ -84,132 +73,132 @@ export default function AdminProducts() {
         await productsAPI.create(data);
         toast.success('تم إنشاء المنتج');
       }
-      setModalOpen(false);
-      loadProducts();
-    } catch {} finally { setSaving(false); }
+      setShowModal(false);
+      fetchProducts();
+    } catch { toast.error('فشل الحفظ'); }
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('تأكيد حذف المنتج؟')) return;
-    try {
-      await productsAPI.delete(id);
-      toast.success('تم حذف المنتج');
-      loadProducts();
-    } catch {}
+    if (!window.confirm('هل أنت متأكد؟')) return;
+    try { await productsAPI.delete(id); toast.success('تم الحذف'); fetchProducts(); }
+    catch { toast.error('فشل الحذف'); }
   };
 
-  const addImageField = () => setForm({ ...form, images: [...form.images, { image_url: '', order: form.images.length }] });
-  const removeImageField = (i: number) => setForm({ ...form, images: form.images.filter((_, idx) => idx !== i) });
-  const updateImage = (i: number, url: string) => {
-    const images = [...form.images];
-    images[i] = { ...images[i], image_url: url };
-    setForm({ ...form, images });
+  const updateImage = (idx: number, val: string) => {
+    const imgs = [...form.images];
+    imgs[idx] = { ...imgs[idx], image_url: val };
+    setForm({ ...form, images: imgs });
   };
+
+  const addImage = () => setForm({ ...form, images: [...form.images, { image_url: '', order: form.images.length }] });
+  const removeImage = (idx: number) => { if (form.images.length > 1) setForm({ ...form, images: form.images.filter((_, i) => i !== idx) }); };
+
+  const updateVariant = (idx: number, key: string, val: any) => {
+    const vars = [...form.variants];
+    (vars[idx] as any)[key] = val;
+    setForm({ ...form, variants: vars });
+  };
+
+  const addVariant = () => setForm({ ...form, variants: [...form.variants, { name: '', price: '', image_url: '', is_available: true }] });
+  const removeVariant = (idx: number) => { if (form.variants.length > 1) setForm({ ...form, variants: form.variants.filter((_, i) => i !== idx) }); };
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-arabic font-bold gold-text">إدارة المنتجات</h1>
-        <button onClick={openCreate} className="gold-btn flex items-center gap-2 text-sm">
-          <HiOutlinePlus className="w-4 h-4" /> إضافة منتج
-        </button>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+        <h1 className="text-2xl font-arabic font-bold gold-text">المنتجات</h1>
+        <button onClick={openCreate} className="gold-btn flex items-center gap-2"><HiOutlinePlus className="w-5 h-5" /> إضافة منتج</button>
       </div>
 
       <div className="relative mb-6">
         <HiOutlineSearch className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-cream/40" />
-        <input type="text" placeholder="بحث عن منتج..." value={search} onChange={e => setSearch(e.target.value)} className="input-field pr-12" />
+        <input type="text" placeholder="ابحث عن منتج..." value={search} onChange={e => setSearch(e.target.value)} className="input-field pr-12" />
       </div>
 
-      <div className="card overflow-hidden">
+      {loading ? (
+        <div className="space-y-3">{[1,2,3,4,5].map(i => <div key={i} className="h-16 bg-dark-800 animate-pulse rounded-lg" />)}</div>
+      ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-cream/40 border-b border-dark-700 bg-dark-900">
-                <th className="text-right py-3 px-4">الاسم</th>
-                <th className="text-right py-3 px-4">السعر</th>
-                <th className="text-right py-3 px-4">التصنيف</th>
-                <th className="text-right py-3 px-4">التوفر</th>
-                <th className="text-left py-3 px-4">إجراءات</th>
-              </tr>
-            </thead>
+          <table className="w-full text-right">
+            <thead><tr className="text-cream/40 text-sm border-b border-dark-700">
+              <th className="pb-3 font-arabic">الاسم</th><th className="pb-3 font-arabic">السعر</th>
+              <th className="pb-3 font-arabic">التصنيف</th><th className="pb-3 font-arabic">الحالة</th><th className="pb-3 font-arabic">الإجراءات</th>
+            </tr></thead>
             <tbody>
               {products.map(p => (
-                <tr key={p.id} className="border-b border-dark-700 hover:bg-dark-700/50">
-                  <td className="py-3 px-4 text-cream/80">{p.name}</td>
-                  <td className="py-3 px-4 gold-text font-semibold">{p.price.toLocaleString()} د.ج</td>
-                  <td className="py-3 px-4 text-cream/60 text-xs">{categories.find(c => c.id === p.category_id)?.name || '—'}</td>
-                  <td className="py-3 px-4">
-                    <span className={`px-2 py-1 rounded-full text-xs ${p.is_available ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                      {p.is_available ? 'متوفر' : 'غير متوفر'}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4">
-                    <div className="flex gap-2 justify-end">
-                      <button onClick={() => openEdit(p.id)} className="p-2 text-cream/40 hover:text-gold transition-colors"><HiOutlinePencil className="w-4 h-4" /></button>
-                      <button onClick={() => handleDelete(p.id)} className="p-2 text-cream/40 hover:text-red-400 transition-colors"><HiOutlineTrash className="w-4 h-4" /></button>
+                <tr key={p.id} className="border-b border-dark-800 hover:bg-dark-800/50 transition-colors">
+                  <td className="py-3 text-cream font-semibold">{p.name}</td>
+                  <td className="py-3 gold-text">{p.price.toLocaleString()} د.ج</td>
+                  <td className="py-3 text-cream/60">{categories.find(c => c.id === p.category_id)?.name || '-'}</td>
+                  <td className="py-3"><span className={`px-2 py-0.5 rounded-full text-xs ${p.is_available ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>{p.is_available ? 'متوفر' : 'غير متوفر'}</span></td>
+                  <td className="py-3">
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => openEdit(p)} className="p-2 text-blue-400/60 hover:text-blue-400"><HiOutlinePencil className="w-4 h-4" /></button>
+                      <button onClick={() => handleDelete(p.id)} className="p-2 text-red-400/60 hover:text-red-400"><HiOutlineTrash className="w-4 h-4" /></button>
                     </div>
                   </td>
                 </tr>
               ))}
-              {products.length === 0 && (
-                <tr><td colSpan={5} className="py-12 text-center text-cream/40">لا توجد منتجات</td></tr>
-              )}
             </tbody>
           </table>
         </div>
-      </div>
+      )}
 
-      {/* Modal */}
       <AnimatePresence>
-        {modalOpen && (
+        {showModal && (
           <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 z-50" onClick={() => setModalOpen(false)} />
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="fixed inset-0 z-50 flex items-center justify-center p-4">
-              <div className="bg-dark-900 gold-border rounded-xl w-full max-w-lg max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-                <div className="flex items-center justify-between p-4 border-b border-dark-700">
-                  <h2 className="font-arabic text-lg gold-text font-bold">{editingId ? 'تعديل منتج' : 'إضافة منتج'}</h2>
-                  <button onClick={() => setModalOpen(false)} className="text-cream/60 hover:text-gold"><HiOutlineX className="w-5 h-5" /></button>
-                </div>
-                <div className="p-4 space-y-4">
-                  <div>
-                    <label className="block text-sm text-cream/60 mb-1">الاسم *</label>
-                    <input type="text" value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="input-field" />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 z-50" onClick={() => setShowModal(false)} />
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="fixed inset-4 md:inset-auto md:top-10 md:left-10 md:right-10 md:max-w-3xl md:mx-auto z-50 bg-dark-900 rounded-2xl overflow-y-auto max-h-[90vh]">
+              <div className="p-6">
+                <h2 className="text-xl font-arabic font-bold gold-text mb-6">{editingId ? 'تعديل منتج' : 'إضافة منتج'}</h2>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                  <div><label className="block text-sm text-cream/60 mb-1 font-arabic">الاسم *</label><input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="input-field" /></div>
+                  <div><label className="block text-sm text-cream/60 mb-1 font-arabic">السعر *</label><input type="number" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} className="input-field" /></div>
+                  <div><label className="block text-sm text-cream/60 mb-1 font-arabic">التصنيف</label>
+                    <select value={form.category_id} onChange={e => setForm({ ...form, category_id: e.target.value })} className="input-field">
+                      <option value="">بدون تصنيف</option>
+                      {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm text-cream/60 mb-1">السعر (د.ج) *</label>
-                      <input type="number" value={form.price} onChange={e => setForm({...form, price: e.target.value})} className="input-field" />
+                  <div><label className="block text-sm text-cream/60 mb-1 font-arabic">الحالة</label>
+                    <select value={form.is_available ? 'true' : 'false'} onChange={e => setForm({ ...form, is_available: e.target.value === 'true' })} className="input-field">
+                      <option value="true">متوفر</option><option value="false">غير متوفر</option>
+                    </select>
+                  </div>
+                  <div className="md:col-span-2"><label className="block text-sm text-cream/60 mb-1 font-arabic">الوصف</label><textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="input-field" rows={3} /></div>
+                </div>
+
+                <div className="mb-6">
+                  <h3 className="font-arabic text-gold font-semibold mb-2">الصور</h3>
+                  {form.images.map((img, idx) => (
+                    <div key={idx} className="flex gap-2 mb-2">
+                      <input type="text" value={img.image_url} onChange={e => updateImage(idx, e.target.value)} className="input-field flex-1" placeholder="رابط الصورة" />
+                      {form.images.length > 1 && <button onClick={() => removeImage(idx)} className="text-red-400 text-sm">حذف</button>}
                     </div>
-                    <div>
-                      <label className="block text-sm text-cream/60 mb-1">التصنيف</label>
-                      <select value={form.category_id} onChange={e => setForm({...form, category_id: e.target.value})} className="input-field">
-                        <option value="">بدون تصنيف</option>
-                        {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  ))}
+                  <button onClick={addImage} className="text-gold text-sm mt-1">+ إضافة صورة</button>
+                </div>
+
+                <div className="mb-6">
+                  <h3 className="font-arabic text-gold font-semibold mb-2">الأنواع / الأصناف</h3>
+                  <p className="text-cream/40 text-xs mb-3">أضف أنواعًا مختلفة للمنتج (مثل: لون، حجم، خامة) — اختياري</p>
+                  {form.variants.map((v, idx) => (
+                    <div key={idx} className="flex flex-wrap gap-2 mb-3 p-3 bg-dark-800 rounded-lg">
+                      <input type="text" value={v.name} onChange={e => updateVariant(idx, 'name', e.target.value)} className="input-field flex-1 min-w-[120px]" placeholder="اسم النوع (مثل: أحمر)" />
+                      <input type="number" value={v.price} onChange={e => updateVariant(idx, 'price', e.target.value)} className="input-field w-28" placeholder="السعر" />
+                      <input type="text" value={v.image_url} onChange={e => updateVariant(idx, 'image_url', e.target.value)} className="input-field flex-1 min-w-[120px]" placeholder="رابط صورة (اختياري)" />
+                      <select value={v.is_available ? 'true' : 'false'} onChange={e => updateVariant(idx, 'is_available', e.target.value === 'true')} className="input-field w-24">
+                        <option value="true">متوفر</option><option value="false">غير متوفر</option>
                       </select>
+                      {form.variants.length > 1 && <button onClick={() => removeVariant(idx)} className="text-red-400 text-sm px-2">✕</button>}
                     </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm text-cream/60 mb-1">الوصف</label>
-                    <textarea value={form.description} onChange={e => setForm({...form, description: e.target.value})} className="input-field h-24" />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input type="checkbox" checked={form.is_available} onChange={e => setForm({...form, is_available: e.target.checked})} className="accent-gold" />
-                    <span className="text-sm text-cream/60">متوفر</span>
-                  </div>
-                  <div>
-                    <label className="block text-sm text-cream/60 mb-2">روابط الصور</label>
-                    {form.images.map((img, i) => (
-                      <div key={i} className="flex gap-2 mb-2">
-                        <input type="text" value={img.image_url} onChange={e => updateImage(i, e.target.value)} placeholder="رابط الصورة" className="input-field flex-1 text-xs" dir="ltr" />
-                        {form.images.length > 1 && <button onClick={() => removeImageField(i)} className="text-red-400 text-xs">حذف</button>}
-                      </div>
-                    ))}
-                    <button onClick={addImageField} className="text-gold text-sm">+ إضافة صورة</button>
-                  </div>
+                  ))}
+                  <button onClick={addVariant} className="text-gold text-sm mt-1">+ إضافة نوع</button>
                 </div>
-                <div className="p-4 border-t border-dark-700 flex gap-3 justify-end">
-                  <button onClick={() => setModalOpen(false)} className="dark-btn text-sm">إلغاء</button>
-                  <button onClick={handleSave} disabled={saving} className="gold-btn text-sm">{saving ? 'جاري...' : 'حفظ'}</button>
+
+                <div className="flex gap-3 justify-end">
+                  <button onClick={() => setShowModal(false)} className="dark-btn px-6 py-2">إلغاء</button>
+                  <button onClick={handleSubmit} className="gold-btn px-6 py-2">{editingId ? 'تحديث' : 'إنشاء'}</button>
                 </div>
               </div>
             </motion.div>

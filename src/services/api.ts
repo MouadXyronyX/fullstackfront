@@ -73,6 +73,7 @@ export const productsAPI = {
   create: (data: any) => api.post('/products/', data),
   update: (id: number, data: any) => api.put(`/products/${id}`, data),
   delete: (id: number) => api.delete(`/products/${id}`),
+  count: (params?: any) => api.get('/products/count', { params }),
 };
 
 // Categories
@@ -92,7 +93,7 @@ export const ordersAPI = {
   create: (data: any) => api.post('/orders/', data),
   updateStatus: (id: number, status: string) => api.put(`/orders/${id}/status`, { status }),
   delete: (id: number) => api.delete(`/orders/${id}`),
-  track: (orderCode: string, phone: string) => api.get('/orders/track', { params: { order_code: orderCode, phone } }),
+  track: (orderCode: string) => api.get('/orders/track', { params: { order_code: orderCode } }),
 };
 
 // Pages

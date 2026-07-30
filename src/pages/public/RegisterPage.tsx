@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { HiOutlineEye, HiOutlineEyeOff } from 'react-icons/hi';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
 
@@ -9,6 +10,7 @@ export default function RegisterPage() {
   const navigate = useNavigate();
   const [form, setForm] = useState({ name: '', email: '', phone: '', password: '' });
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,7 +51,12 @@ export default function RegisterPage() {
             </div>
             <div>
               <label className="block text-sm text-cream/60 mb-1">كلمة السر *</label>
-              <input type="password" value={form.password} onChange={e => setForm({...form, password: e.target.value})} className="input-field" required minLength={6} />
+              <div className="relative">
+                <input type={showPassword ? 'text' : 'password'} value={form.password} onChange={e => setForm({...form, password: e.target.value})} className="input-field w-full pl-10" required minLength={6} />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute left-3 top-1/2 -translate-y-1/2 text-cream/40 hover:text-gold">
+                  {showPassword ? <HiOutlineEyeOff className="w-5 h-5" /> : <HiOutlineEye className="w-5 h-5" />}
+                </button>
+              </div>
             </div>
             <button type="submit" disabled={loading} className="gold-btn w-full py-3">
               {loading ? 'جاري...' : 'إنشاء حساب'}
