@@ -119,9 +119,9 @@ export default function AdminProducts() {
       ) : products.length === 0 ? (
         <div className="text-center py-12 text-cream/40">لا توجد منتجات</div>
       ) : (
-        <div className="overflow-x-auto max-h-[65vh] overflow-y-auto gold-border rounded-xl">
+        <div className="overflow-x-auto overflow-y-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
           <table className="w-full text-right">
-            <thead><tr className="text-cream/40 text-sm border-b border-dark-700 sticky top-0 bg-dark-900">
+            <thead><tr className="text-cream/40 text-sm border-b border-dark-700 sticky top-0 bg-dark-900 z-10">
               <th className="pb-3 pt-3 font-arabic">الاسم</th><th className="pb-3 pt-3 font-arabic">السعر</th>
               <th className="pb-3 pt-3 font-arabic">التصنيف</th><th className="pb-3 pt-3 font-arabic">الحالة</th><th className="pb-3 pt-3 font-arabic">الإجراءات</th>
             </tr></thead>
