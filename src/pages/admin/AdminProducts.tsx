@@ -28,7 +28,7 @@ export default function AdminProducts() {
 
   const fetchProducts = () => {
     setLoading(true);
-    const params: any = {};
+    const params: any = { limit: 200 };
     if (search) params.search = search;
     productsAPI.list(params).then(res => setProducts(res.data)).catch(() => {}).finally(() => setLoading(false));
   };
