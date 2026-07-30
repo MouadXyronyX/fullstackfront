@@ -113,6 +113,7 @@ export const usersAPI = {
   get: (id: number) => api.get(`/users/${id}`),
   update: (id: number, data: any) => api.put(`/users/${id}`, data),
   delete: (id: number) => api.delete(`/users/${id}`),
+  resetPassword: (id: number, newPassword: string) => api.put(`/users/${id}/password`, { new_password: newPassword }),
 };
 
 // Chats
