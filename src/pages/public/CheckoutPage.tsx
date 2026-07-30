@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import ReCAPTCHA from 'react-google-recaptcha';
 import { HiOutlineShoppingBag, HiOutlineTrash, HiOutlineArrowRight } from 'react-icons/hi';
 import IslamicDivider from '../../components/ui/IslamicDivider';
 import { useCart } from '../../context/CartContext';
@@ -13,7 +12,6 @@ export default function CheckoutPage() {
   const { items, totalPrice, clearCart } = useCart();
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [orderResult, setOrderResult] = useState<{ order_code: string } | null>(null);
 
@@ -44,10 +42,6 @@ export default function CheckoutPage() {
       toast.error('يرجى ملء الحقول الإلزامية');
       return;
     }
-    if (!captchaToken) {
-      toast.error('يرجى التحقق من أنك لست روبوت');
-      return;
-    }
     setSubmitting(true);
     try {
       const orderData = {
@@ -65,7 +59,6 @@ export default function CheckoutPage() {
           variant_id: item.variant?.id || undefined,
           variant_name: item.variant?.name || undefined,
         })),
-        captcha_token: captchaToken,
       };
       const res = await ordersAPI.create(orderData);
       setOrderResult({ order_code: res.data.order_code });
@@ -184,14 +177,6 @@ export default function CheckoutPage() {
                     <p className="text-xs text-cream/40">ادفع نقدًا عند استلام الطلب</p>
                   </div>
                 </label>
-              </div>
-
-              <div className="flex justify-center">
-                <ReCAPTCHA
-                  sitekey="6LfL9dEqAAAAAG0_6FAvCMFzU7jQpB3fyhBccbrn"
-                  theme="dark"
-                  onChange={(token) => setCaptchaToken(token)}
-                />
               </div>
 
               <button type="submit" disabled={submitting || items.length === 0} className="gold-btn w-full py-3 flex items-center justify-center gap-2">
