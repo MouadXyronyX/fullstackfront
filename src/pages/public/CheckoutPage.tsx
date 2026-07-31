@@ -6,6 +6,7 @@ import IslamicDivider from '../../components/ui/IslamicDivider';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { ordersAPI } from '../../services/api';
+import { DELIVERY_WILAYAS, getCommunesByWilaya } from '../../data/locations';
 import toast from 'react-hot-toast';
 
 export default function CheckoutPage() {
@@ -24,6 +25,8 @@ export default function CheckoutPage() {
     address: '',
     note: '',
   });
+  const [wilayaCode, setWilayaCode] = useState('');
+  const communes = wilayaCode ? getCommunesByWilaya(wilayaCode) : [];
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -127,11 +130,40 @@ export default function CheckoutPage() {
                   </div>
                   <div>
                     <label className="block text-sm text-cream/60 mb-1 font-arabic">الولاية *</label>
-                    <input type="text" value={form.wilaya} onChange={e => setForm({ ...form, wilaya: e.target.value })} className="input-field" required />
+                    <select
+                      value={wilayaCode}
+                      onChange={e => {
+                        const code = e.target.value;
+                        setWilayaCode(code);
+                        const w = DELIVERY_WILAYAS.find(x => x.code === code);
+                        setForm({ ...form, wilaya: w ? w.ar_name : '', commune: '' });
+                      }}
+                      className="input-field"
+                      required
+                    >
+                      <option value="">اختر الولاية</option>
+                      {DELIVERY_WILAYAS.map(w => (
+                        <option key={w.code} value={w.code}>{w.ar_name}</option>
+                      ))}
+                    </select>
                   </div>
                   <div>
                     <label className="block text-sm text-cream/60 mb-1 font-arabic">البلدية *</label>
-                    <input type="text" value={form.commune} onChange={e => setForm({ ...form, commune: e.target.value })} className="input-field" required />
+                    <select
+                      value={form.commune}
+                      onChange={e => {
+                        const commune = communes.find(c => c.ar_name === e.target.value);
+                        setForm({ ...form, commune: commune ? commune.ar_name : e.target.value });
+                      }}
+                      className="input-field"
+                      required
+                      disabled={!wilayaCode}
+                    >
+                      <option value="">اختر البلدية</option>
+                      {communes.map(c => (
+                        <option key={c.id} value={c.ar_name}>{c.ar_name}</option>
+                      ))}
+                    </select>
                   </div>
                   <div className="md:col-span-2">
                     <label className="block text-sm text-cream/60 mb-1 font-arabic">العنوان التفصيلي <span className="text-cream/30">(اختياري)</span></label>

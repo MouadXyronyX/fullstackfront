@@ -118,7 +118,7 @@ export const usersAPI = {
 
 // Chats
 export const chatsAPI = {
-  list: () => api.get('/chats/'),
+  list: (params?: any) => api.get('/chats/', { params }),
   myChats: () => api.get('/chats/my'),
   get: (id: number) => api.get(`/chats/${id}`),
   getOrCreateGuest: (identifier: string, productId?: number) =>
