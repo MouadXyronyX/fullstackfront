@@ -125,7 +125,7 @@ export default function CheckoutPage() {
                     <input type="tel" value={form.guest_phone} onChange={e => setForm({ ...form, guest_phone: e.target.value })} className="input-field" required />
                   </div>
                   <div>
-                    <label className="block text-sm text-cream/60 mb-1 font-arabic">البريد الإلكتروني</label>
+                    <label className="block text-sm text-cream/60 mb-1 font-arabic">البريد الإلكتروني (اختياري)</label>
                     <input type="email" value={form.guest_email} onChange={e => setForm({ ...form, guest_email: e.target.value })} className="input-field" />
                   </div>
                   <div>
