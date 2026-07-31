@@ -45,7 +45,9 @@ export default function AdminChats() {
 
     socket.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      if (data.type === 'message') {
+      if (data.type === 'ready') {
+        setConnected(true);
+      } else if (data.type === 'message') {
         setMessages(prev => [...prev, {
           id: data.id,
           chat_id: data.chat_id,
@@ -56,7 +58,10 @@ export default function AdminChats() {
         }]);
       }
     };
-    socket.onopen = () => setConnected(true);
+    socket.onopen = () => {
+      const token = localStorage.getItem('access_token');
+      socket.send(JSON.stringify({ type: 'auth', token }));
+    };
     socket.onclose = () => setConnected(false);
     setWs(socket);
   };

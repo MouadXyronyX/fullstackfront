@@ -10,7 +10,10 @@ export function useNotifications() {
     const host = import.meta.env.VITE_API_HOST || window.location.host;
     const socket = new WebSocket(`${protocol}//${host}/ws/admin`);
 
-    socket.onopen = () => {};
+    socket.onopen = () => {
+      const token = localStorage.getItem('access_token');
+      socket.send(JSON.stringify({ type: 'auth', token }));
+    };
     socket.onerror = () => {};
     socket.onclose = () => {};
 
