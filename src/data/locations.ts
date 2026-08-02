@@ -20,7 +20,7 @@ export interface Commune {
   latitude: string;
 }
 
-const ALL_WILAYAS = wilayasData as Wilaya[];
+export const ALL_WILAYAS = wilayasData as Wilaya[];
 const ALL_COMMUNES = communesData as Commune[];
 
 export const DELIVERY_WILAYA_CODES = ['2', '9', '15', '16', '26', '31', '35', '42', '44', '48'];
@@ -29,5 +29,14 @@ export const DELIVERY_WILAYAS: Wilaya[] = DELIVERY_WILAYA_CODES
   .map(code => ALL_WILAYAS.find(w => w.code === code))
   .filter((w): w is Wilaya => !!w);
 
+export const DEFAULT_DELIVERY_WILAYAS = DELIVERY_WILAYAS.map(w => ({
+  code: w.code,
+  ar_name: w.ar_name,
+  price: 0,
+}));
+
 export const getCommunesByWilaya = (wilayaCode: string): Commune[] =>
   ALL_COMMUNES.filter(c => c.wilaya_id === wilayaCode);
+
+export const getWilayaByCode = (code: string): Wilaya | undefined =>
+  ALL_WILAYAS.find(w => w.code === code);

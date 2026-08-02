@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Navigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { HiOutlineClipboardList, HiOutlineChat, HiOutlineUser } from 'react-icons/hi';
+import { HiOutlineClipboardList, HiOutlineChat, HiOutlineUser, HiOutlineChevronDown } from 'react-icons/hi';
 import IslamicDivider from '../../components/ui/IslamicDivider';
 import { useAuth } from '../../context/AuthContext';
 import { ordersAPI } from '../../services/api';
@@ -11,12 +11,17 @@ export default function ProfilePage() {
   const { user, isAuthenticated } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [activeTab, setActiveTab] = useState<'orders' | 'info'>('orders');
+  const [expanded, setExpanded] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
     ordersAPI.myOrders().then(res => setOrders(res.data)).catch(() => {});
   }, []);
 
   if (!isAuthenticated) return <Navigate to="/login" replace />;
+
+  const toggleOrder = (id: number) => {
+    setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
+  };
 
   return (
     <div className="pt-28 max-w-5xl mx-auto px-4 py-8">
@@ -53,27 +58,83 @@ export default function ProfilePage() {
                   <Link to="/products" className="gold-btn inline-block mt-4">تصفح المنتجات</Link>
                 </div>
               ) : (
-                orders.map(order => (
-                  <div key={order.id} className="card p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="font-mono text-gold font-bold">#{order.order_code}</span>
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                        order.status === 'delivered' ? 'bg-green-500/20 text-green-400' :
-                        order.status === 'cancelled' ? 'bg-red-500/20 text-red-400' :
-                        'bg-gold/20 text-gold'
-                      }`}>
-                        {ORDER_STATUS_MAP[order.status as OrderStatus]}
-                      </span>
+                orders.map(order => {
+                  const isOpen = !!expanded[order.id];
+                  const deliveryFee = order.delivery_fee || 0;
+                  const itemsTotal = order.total_price - deliveryFee;
+                  return (
+                    <div key={order.id} className="card p-4">
+                      <button onClick={() => toggleOrder(order.id)} className="w-full text-right">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="font-mono text-gold font-bold">#{order.order_code}</span>
+                          <span className="flex items-center gap-3">
+                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                              order.status === 'delivered' ? 'bg-green-500/20 text-green-400' :
+                              order.status === 'cancelled' ? 'bg-red-500/20 text-red-400' :
+                              'bg-gold/20 text-gold'
+                            }`}>
+                              {ORDER_STATUS_MAP[order.status as OrderStatus]}
+                            </span>
+                            <HiOutlineChevronDown className={`w-5 h-5 text-cream/40 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                          </span>
+                        </div>
+                        <div className="text-sm text-cream/60">
+                          <span>{order.created_at ? new Date(order.created_at).toLocaleDateString('ar-DZ') : ''}</span>
+                          <span className="mx-2">|</span>
+                          <span>{order.items.length} منتجات</span>
+                          <span className="mx-2">|</span>
+                          <span className="gold-text font-semibold">{order.total_price.toLocaleString()} د.ج</span>
+                        </div>
+                      </button>
+
+                      {isOpen && (
+                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-4 pt-4 border-t border-dark-700">
+                          <div className="space-y-2">
+                            {order.items.map(item => (
+                              <div key={item.id} className="flex items-center justify-between bg-dark-800 rounded-lg p-3 text-sm">
+                                <div>
+                                  <p className="text-cream font-semibold">{item.product_name || `منتج #${item.product_id}`}</p>
+                                  {item.variant_name && <p className="text-xs text-gold/70">{item.variant_name}</p>}
+                                </div>
+                                <div className="text-left">
+                                  <p className="text-cream/60">{item.quantity} × {(item.price_at_order || 0).toLocaleString()} د.ج</p>
+                                  <p className="text-gold font-semibold">{(item.quantity * (item.price_at_order || 0)).toLocaleString()} د.ج</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          <div className="mt-4 space-y-1 text-sm">
+                            <div className="flex justify-between text-cream/60">
+                              <span>المنتجات</span>
+                              <span>{itemsTotal.toLocaleString()} د.ج</span>
+                            </div>
+                            <div className="flex justify-between text-cream/60">
+                              <span>التوصيل</span>
+                              <span>{deliveryFee.toLocaleString()} د.ج</span>
+                            </div>
+                            <div className="flex justify-between text-cream font-bold pt-1 border-t border-dark-700">
+                              <span>الإجمالي</span>
+                              <span className="gold-text">{order.total_price.toLocaleString()} د.ج</span>
+                            </div>
+                          </div>
+
+                          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                            <div className="bg-dark-800/50 rounded-lg p-3">
+                              <p className="text-xs text-cream/40 mb-1">عنوان التوصيل</p>
+                              <p className="text-cream">{order.wilaya} - {order.commune}</p>
+                              {order.address && <p className="text-cream/60 text-xs mt-1">{order.address}</p>}
+                            </div>
+                            <div className="bg-dark-800/50 rounded-lg p-3">
+                              <p className="text-xs text-cream/40 mb-1">رقم الهاتف</p>
+                              <p className="text-cream" dir="ltr">{order.guest_phone || '—'}</p>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
                     </div>
-                    <div className="text-sm text-cream/60">
-                      <span>{order.created_at ? new Date(order.created_at).toLocaleDateString('ar-DZ') : ''}</span>
-                      <span className="mx-2">|</span>
-                      <span>{order.items.length} منتجات</span>
-                      <span className="mx-2">|</span>
-                      <span className="gold-text font-semibold">{order.total_price.toLocaleString()} د.ج</span>
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </motion.div>
           )}

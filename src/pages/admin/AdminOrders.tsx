@@ -136,9 +136,19 @@ export default function AdminOrders() {
                   ))}
                 </div>
 
-                <div className="flex items-center justify-between p-4 bg-dark-800 rounded-lg mb-6">
-                  <span className="text-cream/60 font-arabic">المجموع</span>
-                  <span className="gold-text font-bold text-xl">{selectedOrder.total_price.toLocaleString()} د.ج</span>
+                <div className="space-y-1 p-4 bg-dark-800 rounded-lg mb-6">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-cream/60 font-arabic">المنتجات</span>
+                    <span className="text-cream">{(selectedOrder.total_price - (selectedOrder.delivery_fee || 0)).toLocaleString()} د.ج</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-cream/60 font-arabic">التوصيل</span>
+                    <span className="text-cream">{(selectedOrder.delivery_fee || 0).toLocaleString()} د.ج</span>
+                  </div>
+                  <div className="flex justify-between items-center pt-2 border-t border-dark-700">
+                    <span className="text-cream/60 font-arabic">المجموع</span>
+                    <span className="gold-text font-bold text-xl">{selectedOrder.total_price.toLocaleString()} د.ج</span>
+                  </div>
                 </div>
 
                 <h3 className="font-arabic text-gold font-semibold mb-3">تحديث الحالة</h3>

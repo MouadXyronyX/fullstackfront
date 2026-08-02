@@ -63,6 +63,7 @@ export interface Order {
   note?: string;
   status: OrderStatus;
   total_price: number;
+  delivery_fee?: number;
   created_at?: string;
   items: OrderItem[];
 }
@@ -137,6 +138,12 @@ export interface GeneralSettings {
   email: string;
   address: string;
   working_hours: string;
+}
+
+export interface DeliveryWilaya {
+  code: string;
+  ar_name: string;
+  price: number;
 }
 
 export interface Notification {

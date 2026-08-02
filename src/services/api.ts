@@ -133,6 +133,8 @@ export const settingsAPI = {
   getAll: () => api.get('/settings/'),
   getGeneral: () => api.get('/settings/general'),
   updateGeneral: (data: any) => api.put('/settings/general', data),
+  getDeliveryWilayas: () => api.get('/settings/delivery-wilayas'),
+  updateDeliveryWilayas: (items: any[]) => api.put('/settings/delivery-wilayas', { items }),
 };
 
 // Dashboard

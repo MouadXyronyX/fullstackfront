@@ -5,8 +5,9 @@ import { HiOutlineShoppingBag, HiOutlineTrash, HiOutlineArrowRight } from 'react
 import IslamicDivider from '../../components/ui/IslamicDivider';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
-import { ordersAPI } from '../../services/api';
-import { DELIVERY_WILAYAS, getCommunesByWilaya } from '../../data/locations';
+import { ordersAPI, settingsAPI } from '../../services/api';
+import { getCommunesByWilaya, DEFAULT_DELIVERY_WILAYAS } from '../../data/locations';
+import { DeliveryWilaya } from '../../types';
 import toast from 'react-hot-toast';
 
 export default function CheckoutPage() {
@@ -26,7 +27,21 @@ export default function CheckoutPage() {
     note: '',
   });
   const [wilayaCode, setWilayaCode] = useState('');
+  const [deliveryWilayas, setDeliveryWilayas] = useState<DeliveryWilaya[]>(DEFAULT_DELIVERY_WILAYAS);
   const communes = wilayaCode ? getCommunesByWilaya(wilayaCode) : [];
+  const selectedDelivery = deliveryWilayas.find(w => w.code === wilayaCode);
+  const deliveryPrice = selectedDelivery?.price ?? 0;
+  const orderTotal = totalPrice + deliveryPrice;
+
+  useEffect(() => {
+    settingsAPI.getDeliveryWilayas()
+      .then(res => {
+        if (Array.isArray(res.data) && res.data.length > 0) {
+          setDeliveryWilayas(res.data);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -55,6 +70,7 @@ export default function CheckoutPage() {
         commune: form.commune,
         address: form.address || undefined,
         note: form.note || undefined,
+        delivery_fee: deliveryPrice || undefined,
         items: items.map(item => ({
           product_id: item.product.id,
           quantity: item.quantity,
@@ -135,14 +151,14 @@ export default function CheckoutPage() {
                       onChange={e => {
                         const code = e.target.value;
                         setWilayaCode(code);
-                        const w = DELIVERY_WILAYAS.find(x => x.code === code);
+                        const w = deliveryWilayas.find(x => x.code === code);
                         setForm({ ...form, wilaya: w ? w.ar_name : '', commune: '' });
                       }}
                       className="input-field"
                       required
                     >
                       <option value="">اختر الولاية</option>
-                      {DELIVERY_WILAYAS.map(w => (
+                      {deliveryWilayas.map(w => (
                         <option key={w.code} value={w.code}>{w.ar_name}</option>
                       ))}
                     </select>
@@ -192,10 +208,20 @@ export default function CheckoutPage() {
                     </div>
                   ))}
                 </div>
-                <div className="border-t border-dark-700 mt-4 pt-4">
+                <div className="border-t border-dark-700 mt-4 pt-4 space-y-2">
                   <div className="flex justify-between items-center">
                     <span className="text-cream/60">المجموع</span>
-                    <span className="gold-text font-bold text-xl">{totalPrice.toLocaleString()} د.ج</span>
+                    <span className="text-cream">{totalPrice.toLocaleString()} د.ج</span>
+                  </div>
+                  {wilayaCode && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-cream/60">التوصيل ({form.wilaya})</span>
+                      <span className="text-cream">{deliveryPrice.toLocaleString()} د.ج</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center pt-2 border-t border-dark-800">
+                    <span className="text-cream/60 font-semibold">الإجمالي</span>
+                    <span className="gold-text font-bold text-xl">{orderTotal.toLocaleString()} د.ج</span>
                   </div>
                 </div>
               </div>

@@ -118,9 +118,15 @@ export default function TrackOrderPage() {
                     </div>
                   </div>
 
-                  <div className="mt-4 text-center">
-                    <span className="text-cream/40 text-sm">الإجمالي: </span>
-                    <span className="gold-text font-bold text-lg">{order.total_price.toLocaleString()} د.ج</span>
+                  <div className="mt-4 text-center space-y-1">
+                    <div className="text-sm text-cream/40">
+                      المنتجات: {(order.total_price - (order.delivery_fee || 0)).toLocaleString()} د.ج
+                      {order.delivery_fee ? <span> + التوصيل: {(order.delivery_fee || 0).toLocaleString()} د.ج</span> : null}
+                    </div>
+                    <div>
+                      <span className="text-cream/40 text-sm">الإجمالي: </span>
+                      <span className="gold-text font-bold text-lg">{order.total_price.toLocaleString()} د.ج</span>
+                    </div>
                   </div>
                 </div>
               </motion.div>
