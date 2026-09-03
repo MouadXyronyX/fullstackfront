@@ -54,7 +54,8 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  // Always use the current active server
+  // Always use the current active server and remember which server this request targets
+  (config as any)._targetURL = activeBaseURL;
   config.baseURL = `${activeBaseURL}/api`;
   const token = localStorage.getItem('access_token');
   if (token) {
@@ -70,20 +71,21 @@ api.interceptors.response.use(
 
     // Immediate failover to backup server when primary is unreachable.
     // Trigger on network error (no response / timeout) OR gateway errors (502/503/504),
-    // but only if we were using the primary and haven't already retried this request.
-    const wasOnPrimary = activeBaseURL === API_BASE_URL;
+    // but only if THIS request was aimed at primary and hasn't already been retried.
+    const targetURL = (originalRequest as any)._targetURL || activeBaseURL;
+    const wasTargetingPrimary = targetURL === API_BASE_URL;
     const isGatewayError =
       !!error.response &&
       [502, 503, 504].includes(error.response.status);
     if (
       BACKUP_API_URL &&
-      wasOnPrimary &&
+      wasTargetingPrimary &&
       !originalRequest._retried &&
       (!error.response || isGatewayError)
     ) {
       originalRequest._retried = true;
       activeBaseURL = BACKUP_API_URL;
-      backendAvailable = false; // primary appears down; use backup
+      backendAvailable = false;
       return api(originalRequest);
     }
 
