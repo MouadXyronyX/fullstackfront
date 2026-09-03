@@ -6,6 +6,7 @@ const BACKUP_API_URL = import.meta.env.VITE_BACKUP_API_URL || '';
 
 let activeBaseURL = API_BASE_URL;
 let fallbackAttempted = false;
+const REQUEST_TIMEOUT = 12000;
 
 export function getActiveBaseURL() {
   return activeBaseURL;
@@ -24,6 +25,7 @@ export function getActiveWsURL(path: string) {
 const api = axios.create({
   baseURL: `${API_BASE_URL}/api`,
   headers: { 'Content-Type': 'application/json' },
+  timeout: REQUEST_TIMEOUT,
 });
 
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
@@ -39,8 +41,12 @@ api.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
-    // Failover to backup server when primary is unreachable (network error)
-    if (BACKUP_API_URL && !fallbackAttempted && !error.response) {
+    // Failover to backup server when primary is unreachable
+    // Trigger on network error (no response / timeout) OR gateway errors (502/503/504)
+    const isGatewayError =
+      !!error.response &&
+      [502, 503, 504].includes(error.response.status);
+    if (BACKUP_API_URL && !fallbackAttempted && (!error.response || isGatewayError)) {
       fallbackAttempted = true;
       activeBaseURL = BACKUP_API_URL;
       api.defaults.baseURL = `${BACKUP_API_URL}/api`;
@@ -52,7 +58,7 @@ api.interceptors.response.use(
       const refreshToken = localStorage.getItem('refresh_token');
       if (refreshToken) {
         try {
-          const res = await axios.post(`${API_BASE_URL}/api/auth/refresh`, {
+          const res = await axios.post(`${activeBaseURL}/api/auth/refresh`, {
             refresh_token: refreshToken,
           });
           const { access_token, refresh_token } = res.data;
