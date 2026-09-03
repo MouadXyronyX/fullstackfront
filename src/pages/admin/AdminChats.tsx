@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { HiOutlinePaperAirplane, HiOutlineUser, HiOutlineFilter } from 'react-icons/hi';
 import toast from 'react-hot-toast';
-import { chatsAPI } from '../../services/api';
+import { chatsAPI, getActiveWsURL } from '../../services/api';
 import { Chat, Message } from '../../types';
 
 export default function AdminChats() {
@@ -39,9 +39,7 @@ export default function AdminChats() {
     setSelectedChat(chat);
     setMessages(chat.messages || []);
     if (ws) ws.close();
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = import.meta.env.VITE_API_HOST || window.location.host;
-    const socket = new WebSocket(`${protocol}//${host}/ws/chat/${chat.id}`);
+    const socket = new WebSocket(getActiveWsURL(`/ws/chat/${chat.id}`));
 
     socket.onmessage = (event) => {
       const data = JSON.parse(event.data);

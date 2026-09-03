@@ -2,6 +2,24 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import toast from 'react-hot-toast';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+const BACKUP_API_URL = import.meta.env.VITE_BACKUP_API_URL || '';
+
+let activeBaseURL = API_BASE_URL;
+let fallbackAttempted = false;
+
+export function getActiveBaseURL() {
+  return activeBaseURL;
+}
+
+export function getActiveWsURL(path: string) {
+  const base = activeBaseURL;
+  if (!base) {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${protocol}//${window.location.host}${path}`;
+  }
+  const protocol = base.startsWith('https') ? 'wss' : 'ws';
+  return `${protocol}://${base.replace(/^https?:\/\//, '')}${path}`;
+}
 
 const api = axios.create({
   baseURL: `${API_BASE_URL}/api`,
@@ -20,6 +38,14 @@ api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+
+    // Failover to backup server when primary is unreachable (network error)
+    if (BACKUP_API_URL && !fallbackAttempted && !error.response) {
+      fallbackAttempted = true;
+      activeBaseURL = BACKUP_API_URL;
+      api.defaults.baseURL = `${BACKUP_API_URL}/api`;
+      return api(originalRequest);
+    }
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;

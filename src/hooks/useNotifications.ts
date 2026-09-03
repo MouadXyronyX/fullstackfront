@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { getActiveWsURL } from '../services/api';
 
 export function useNotifications() {
   const [unreadCount, setUnreadCount] = useState(0);
@@ -6,9 +7,7 @@ export function useNotifications() {
 
   useEffect(() => {
     let cancelled = false;
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = import.meta.env.VITE_API_HOST || window.location.host;
-    const socket = new WebSocket(`${protocol}//${host}/ws/admin`);
+    const socket = new WebSocket(getActiveWsURL('/ws/admin'));
 
     socket.onopen = () => {
       const token = localStorage.getItem('access_token');

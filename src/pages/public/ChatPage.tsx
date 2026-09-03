@@ -5,7 +5,7 @@ import { HiOutlineChatAlt2, HiOutlinePaperAirplane } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import IslamicDivider from '../../components/ui/IslamicDivider';
 import { useAuth } from '../../context/AuthContext';
-import { chatsAPI } from '../../services/api';
+import { chatsAPI, getActiveWsURL } from '../../services/api';
 import { Chat, Message } from '../../types';
 
 export default function ChatPage() {
@@ -69,9 +69,7 @@ export default function ChatPage() {
   useEffect(() => {
     if (!chat) return () => {};
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = import.meta.env.VITE_API_HOST || window.location.host;
-    const socket = new WebSocket(`${protocol}//${host}/ws/chat/${chat.id}`);
+    const socket = new WebSocket(getActiveWsURL(`/ws/chat/${chat.id}`));
 
     socket.onopen = () => {
       const token = localStorage.getItem('access_token');
