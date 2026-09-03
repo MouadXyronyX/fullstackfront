@@ -5,11 +5,17 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 const BACKUP_API_URL = import.meta.env.VITE_BACKUP_API_URL || '';
 
 let activeBaseURL = API_BASE_URL;
-let fallbackAttempted = false;
+let backendAvailable = true;
 const REQUEST_TIMEOUT = 12000;
+const HEALTH_CHECK_INTERVAL = 120000; // 2 minutes
+const HEALTH_CHECK_TIMEOUT = 8000;
 
 export function getActiveBaseURL() {
   return activeBaseURL;
+}
+
+export function isBackendAvailable() {
+  return backendAvailable;
 }
 
 export function getActiveWsURL(path: string) {
@@ -22,6 +28,25 @@ export function getActiveWsURL(path: string) {
   return `${protocol}://${base.replace(/^https?:\/\//, '')}${path}`;
 }
 
+async function checkPrimaryHealth() {
+  if (!API_BASE_URL) return;
+  try {
+    await axios.get(`${API_BASE_URL}/api/settings/public`, {
+      timeout: HEALTH_CHECK_TIMEOUT,
+      headers: { 'Accept': 'application/json' },
+    });
+    activeBaseURL = API_BASE_URL;
+    backendAvailable = true;
+  } catch {
+    activeBaseURL = BACKUP_API_URL || API_BASE_URL;
+    backendAvailable = !!BACKUP_API_URL;
+  }
+}
+
+if (BACKUP_API_URL) {
+  setInterval(checkPrimaryHealth, HEALTH_CHECK_INTERVAL);
+}
+
 const api = axios.create({
   baseURL: `${API_BASE_URL}/api`,
   headers: { 'Content-Type': 'application/json' },
@@ -29,6 +54,8 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+  // Always use the current active server
+  config.baseURL = `${activeBaseURL}/api`;
   const token = localStorage.getItem('access_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -39,17 +66,24 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean; _retried?: boolean };
 
-    // Failover to backup server when primary is unreachable
-    // Trigger on network error (no response / timeout) OR gateway errors (502/503/504)
+    // Immediate failover to backup server when primary is unreachable.
+    // Trigger on network error (no response / timeout) OR gateway errors (502/503/504),
+    // but only if we were using the primary and haven't already retried this request.
+    const wasOnPrimary = activeBaseURL === API_BASE_URL;
     const isGatewayError =
       !!error.response &&
       [502, 503, 504].includes(error.response.status);
-    if (BACKUP_API_URL && !fallbackAttempted && (!error.response || isGatewayError)) {
-      fallbackAttempted = true;
+    if (
+      BACKUP_API_URL &&
+      wasOnPrimary &&
+      !originalRequest._retried &&
+      (!error.response || isGatewayError)
+    ) {
+      originalRequest._retried = true;
       activeBaseURL = BACKUP_API_URL;
-      api.defaults.baseURL = `${BACKUP_API_URL}/api`;
+      backendAvailable = false; // primary appears down; use backup
       return api(originalRequest);
     }
 
