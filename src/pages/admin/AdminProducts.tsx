@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HiOutlinePencil, HiOutlineTrash, HiOutlinePlus, HiOutlineSearch } from 'react-icons/hi';
+import { HiOutlinePencil, HiOutlineTrash, HiOutlinePlus, HiOutlineSearch, HiOutlinePhotograph } from 'react-icons/hi';
 import toast from 'react-hot-toast';
-import { productsAPI, categoriesAPI } from '../../services/api';
+import { productsAPI, categoriesAPI, uploadAPI } from '../../services/api';
 import { Product, ProductVariant, Category } from '../../types';
 
 interface ProductForm {
@@ -25,6 +25,10 @@ export default function AdminProducts() {
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<ProductForm>({ ...emptyForm });
+  const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
+  const [uploadingVariantIdx, setUploadingVariantIdx] = useState<number | null>(null);
+  const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const variantFileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const fetchProducts = () => {
     setLoading(true);
@@ -84,10 +88,46 @@ export default function AdminProducts() {
     catch { toast.error('فشل الحذف'); }
   };
 
-  const updateImage = (idx: number, val: string) => {
-    const imgs = [...form.images];
-    imgs[idx] = { ...imgs[idx], image_url: val };
-    setForm({ ...form, images: imgs });
+  const handleImageUpload = async (idx: number, file: File) => {
+    if (!file.type.startsWith('image/')) { toast.error('يُسمح فقط بملفات الصور'); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error('حجم الصورة يتجاوز 5 ميغابايت'); return; }
+
+    setUploadingIdx(idx);
+    try {
+      const res = await uploadAPI.image(file);
+      const imgs = [...form.images];
+      imgs[idx] = { ...imgs[idx], image_url: res.data.image_url };
+      setForm({ ...form, images: imgs });
+      toast.success('تم رفع الصورة بنجاح');
+    } catch {
+      toast.error('فشل رفع الصورة');
+    } finally {
+      setUploadingIdx(null);
+    }
+  };
+
+  const triggerFileInput = (idx: number) => {
+    fileInputRefs.current[idx]?.click();
+  };
+
+  const handleVariantImageUpload = async (idx: number, file: File) => {
+    if (!file.type.startsWith('image/')) { toast.error('يُسمح فقط بملفات الصور'); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error('حجم الصورة يتجاوز 5 ميغابايت'); return; }
+
+    setUploadingVariantIdx(idx);
+    try {
+      const res = await uploadAPI.image(file);
+      updateVariant(idx, 'image_url', res.data.image_url);
+      toast.success('تم رفع صورة النوع بنجاح');
+    } catch {
+      toast.error('فشل رفع الصورة');
+    } finally {
+      setUploadingVariantIdx(null);
+    }
+  };
+
+  const triggerVariantFileInput = (idx: number) => {
+    variantFileInputRefs.current[idx]?.click();
   };
 
   const addImage = () => setForm({ ...form, images: [...form.images, { image_url: '', order: form.images.length }] });
@@ -173,9 +213,51 @@ export default function AdminProducts() {
                 <div className="mb-6">
                   <h3 className="font-arabic text-gold font-semibold mb-2">الصور</h3>
                   {form.images.map((img, idx) => (
-                    <div key={idx} className="flex gap-2 mb-2">
-                      <input type="text" value={img.image_url} onChange={e => updateImage(idx, e.target.value)} className="input-field flex-1" placeholder="رابط الصورة" />
-                      {form.images.length > 1 && <button onClick={() => removeImage(idx)} className="text-red-400 text-sm">حذف</button>}
+                    <div key={idx} className="flex flex-col gap-2 mb-3 p-3 bg-dark-800 rounded-lg">
+                      {img.image_url ? (
+                        <div className="flex items-center gap-3">
+                          <img src={img.image_url} alt={`صورة ${idx + 1}`} className="w-20 h-20 object-cover rounded-lg border border-dark-600" />
+                          <div className="flex-1">
+                            <p className="text-cream/60 text-xs truncate max-w-[250px]">{img.image_url}</p>
+                            <div className="flex gap-2 mt-2">
+                              <button onClick={() => triggerFileInput(idx)} className="text-gold text-sm">تغيير الصورة</button>
+                              {form.images.length > 1 && <button onClick={() => removeImage(idx)} className="text-red-400 text-sm">حذف</button>}
+                            </div>
+                          </div>
+                          {uploadingIdx === idx && <span className="text-gold text-xs animate-pulse">جاري الرفع...</span>}
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => triggerFileInput(idx)}
+                            disabled={uploadingIdx === idx}
+                            className="w-20 h-20 border-2 border-dashed border-dark-600 rounded-lg flex items-center justify-center text-cream/30 hover:border-gold hover:text-gold transition-colors disabled:opacity-50"
+                          >
+                            {uploadingIdx === idx ? (
+                              <span className="text-xs animate-pulse">...</span>
+                            ) : (
+                              <HiOutlinePhotograph className="w-6 h-6" />
+                            )}
+                          </button>
+                          <div className="flex-1">
+                            <button onClick={() => triggerFileInput(idx)} disabled={uploadingIdx === idx} className="text-gold text-sm disabled:opacity-50">
+                              {uploadingIdx === idx ? 'جاري الرفع...' : 'اختر صورة من الجهاز'}
+                            </button>
+                            {form.images.length > 1 && <button onClick={() => removeImage(idx)} className="text-red-400 text-sm mr-3">حذف</button>}
+                          </div>
+                        </div>
+                      )}
+                      <input
+                        ref={el => { fileInputRefs.current[idx] = el; }}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        className="hidden"
+                        onChange={e => {
+                          const file = e.target.files?.[0];
+                          if (file) handleImageUpload(idx, file);
+                          e.target.value = '';
+                        }}
+                      />
                     </div>
                   ))}
                   <button onClick={addImage} className="text-gold text-sm mt-1">+ إضافة صورة</button>
@@ -186,9 +268,33 @@ export default function AdminProducts() {
                   <p className="text-cream/40 text-xs mb-3">أضف أنواعًا مختلفة للمنتج (مثل: لون، حجم، خامة) — اختياري</p>
                   {form.variants.map((v, idx) => (
                     <div key={idx} className="flex flex-wrap gap-2 mb-3 p-3 bg-dark-800 rounded-lg">
-                      <input type="text" value={v.name} onChange={e => updateVariant(idx, 'name', e.target.value)} className="input-field flex-1 min-w-[120px]" placeholder="اسم النوع (مثل: أحمر)" />
+                      <input type="text" value={v.name} onChange={e => updateVariant(idx, 'name', e.target.value)} className="input-field flex-1 min-w-[120px]" placeholder="اسم النوع (مثل: الأحمر)" />
                       <input type="number" value={v.price} onChange={e => updateVariant(idx, 'price', e.target.value)} className="input-field w-28" placeholder="السعر" />
-                      <input type="text" value={v.image_url} onChange={e => updateVariant(idx, 'image_url', e.target.value)} className="input-field flex-1 min-w-[120px]" placeholder="رابط صورة (اختياري)" />
+                      <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+                        {v.image_url ? (
+                          <img src={v.image_url} alt={v.name || 'صورة النوع'} className="w-10 h-10 object-cover rounded-lg border border-dark-600" />
+                        ) : (
+                          <div className="w-10 h-10 border-2 border-dashed border-dark-600 rounded-lg flex items-center justify-center text-cream/30">
+                            <HiOutlinePhotograph className="w-5 h-5" />
+                          </div>
+                        )}
+                        <div className="flex-1">
+                          <button onClick={() => triggerVariantFileInput(idx)} disabled={uploadingVariantIdx === idx} className="text-gold text-sm disabled:opacity-50">
+                            {uploadingVariantIdx === idx ? 'جاري الرفع...' : v.image_url ? 'تغيير الصورة' : 'اختر صورة من الجهاز'}
+                          </button>
+                        </div>
+                        <input
+                          ref={el => { variantFileInputRefs.current[idx] = el; }}
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp,image/gif"
+                          className="hidden"
+                          onChange={e => {
+                            const file = e.target.files?.[0];
+                            if (file) handleVariantImageUpload(idx, file);
+                            e.target.value = '';
+                          }}
+                        />
+                      </div>
                       <select value={v.is_available ? 'true' : 'false'} onChange={e => updateVariant(idx, 'is_available', e.target.value === 'true')} className="input-field w-24">
                         <option value="true">متوفر</option><option value="false">غير متوفر</option>
                       </select>

@@ -76,6 +76,17 @@ export const productsAPI = {
   count: (params?: any) => api.get('/products/count', { params }),
 };
 
+// Upload
+export const uploadAPI = {
+  image: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/upload/image', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+};
+
 // Categories
 export const categoriesAPI = {
   list: () => api.get('/categories/'),

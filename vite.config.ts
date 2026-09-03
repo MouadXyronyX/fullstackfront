@@ -5,13 +5,14 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
+    allowedHosts: ['alqudsstoredz.zapto.org'],
     proxy: {
       '/api': {
-        target: 'https://fullstackbackend-1-q93z.onrender.com',
+        target: 'http://localhost:8001',
         changeOrigin: true,
       },
       '/ws': {
-        target: 'https://fullstackbackend-1-q93z.onrender.com',
+        target: 'http://localhost:8001',
         ws: true,
       },
     },
