@@ -53,14 +53,13 @@ const api = axios.create({
   timeout: REQUEST_TIMEOUT,
 });
 
-// --- Request Cache + Deduplication ---
+// --- Request Cache ---
 const CACHE_TTL = 30000; // 30 seconds
 const responseCache = new Map<string, { data: any; expiry: number }>();
-const inflightRequests = new Map<string, Promise<any>>();
 
 function getCacheKey(config: InternalAxiosRequestConfig): string | null {
   if (config.method !== 'get') return null;
-  return `${config.method}:${config.baseURL || ''}${config.url || ''}:${JSON.stringify(config.params || {})}`;
+  return `${config.url || ''}:${JSON.stringify(config.params || {})}`;
 }
 
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
@@ -70,61 +69,14 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
-
-  // Deduplicate in-flight GET requests
-  if (config.method === 'get') {
-    const key = getCacheKey(config);
-    if (key) {
-      const cached = responseCache.get(key);
-      if (cached && cached.expiry > Date.now()) {
-        // Return cached data directly via custom adapter
-        config.adapter = () => Promise.resolve({
-          data: cached.data,
-          status: 200,
-          statusText: 'OK',
-          headers: {},
-          config,
-        });
-        return config;
-      }
-      const inflight = inflightRequests.get(key);
-      if (inflight) {
-        config.adapter = () => inflight.then(data => ({
-          data,
-          status: 200,
-          statusText: 'OK',
-          headers: {},
-          config,
-        }));
-        return config;
-      }
-      // Track this request as in-flight
-      let resolveInflight: (data: any) => void;
-      inflightRequests.set(key, new Promise(r => { resolveInflight = r; }));
-      const origAdapter = config.adapter;
-      config.adapter = (cfg) => {
-        return (origAdapter || axios.defaults.adapter)(cfg).then((resp: any) => {
-          resolveInflight!(resp.data);
-          inflightRequests.delete(key);
-          return resp;
-        }).catch((err: any) => {
-          inflightRequests.delete(key);
-          throw err;
-        });
-      };
-    }
-  }
-
   return config;
 });
 
 api.interceptors.response.use(
   (response) => {
-    // Cache GET responses
     const key = getCacheKey(response.config);
     if (key) {
       responseCache.set(key, { data: response.data, expiry: Date.now() + CACHE_TTL });
-      inflightRequests.delete(key);
     }
     return response;
   },
