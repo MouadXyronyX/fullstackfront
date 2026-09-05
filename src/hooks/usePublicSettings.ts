@@ -13,7 +13,19 @@ interface PublicSettings {
   working_hours: string;
 }
 
-let cached: PublicSettings | null = null;
+// Persist settings cache in sessionStorage so it survives page refresh
+const SESSION_KEY = 'public_settings_cache';
+
+function loadFromSessionStorage(): PublicSettings | null {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+let cached: PublicSettings | null = loadFromSessionStorage();
 let fetchPromise: Promise<void> | null = null;
 
 const defaults: PublicSettings = {
@@ -49,6 +61,7 @@ export function usePublicSettings() {
             }
           }
           cached = merged;
+          try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(merged)); } catch {}
           setSettings(cached);
         })
         .catch(() => {

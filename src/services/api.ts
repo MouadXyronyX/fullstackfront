@@ -53,19 +53,81 @@ const api = axios.create({
   timeout: REQUEST_TIMEOUT,
 });
 
+// --- Request Cache + Deduplication ---
+const CACHE_TTL = 30000; // 30 seconds
+const responseCache = new Map<string, { data: any; expiry: number }>();
+const inflightRequests = new Map<string, Promise<any>>();
+
+function getCacheKey(config: InternalAxiosRequestConfig): string | null {
+  if (config.method !== 'get') return null;
+  return `${config.method}:${config.baseURL || ''}${config.url || ''}:${JSON.stringify(config.params || {})}`;
+}
+
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  // Always use the current active server and remember which server this request targets
   (config as any)._targetURL = activeBaseURL;
   config.baseURL = `${activeBaseURL}/api`;
   const token = localStorage.getItem('access_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
+  // Deduplicate in-flight GET requests
+  if (config.method === 'get') {
+    const key = getCacheKey(config);
+    if (key) {
+      const cached = responseCache.get(key);
+      if (cached && cached.expiry > Date.now()) {
+        // Return cached data directly via custom adapter
+        config.adapter = () => Promise.resolve({
+          data: cached.data,
+          status: 200,
+          statusText: 'OK',
+          headers: {},
+          config,
+        });
+        return config;
+      }
+      const inflight = inflightRequests.get(key);
+      if (inflight) {
+        config.adapter = () => inflight.then(data => ({
+          data,
+          status: 200,
+          statusText: 'OK',
+          headers: {},
+          config,
+        }));
+        return config;
+      }
+      // Track this request as in-flight
+      let resolveInflight: (data: any) => void;
+      inflightRequests.set(key, new Promise(r => { resolveInflight = r; }));
+      const origAdapter = config.adapter;
+      config.adapter = (cfg) => {
+        return (origAdapter || axios.defaults.adapter)(cfg).then((resp: any) => {
+          resolveInflight!(resp.data);
+          inflightRequests.delete(key);
+          return resp;
+        }).catch((err: any) => {
+          inflightRequests.delete(key);
+          throw err;
+        });
+      };
+    }
+  }
+
   return config;
 });
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Cache GET responses
+    const key = getCacheKey(response.config);
+    if (key) {
+      responseCache.set(key, { data: response.data, expiry: Date.now() + CACHE_TTL });
+      inflightRequests.delete(key);
+    }
+    return response;
+  },
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean; _retried?: boolean };
 
@@ -121,6 +183,17 @@ api.interceptors.response.use(
 
 export default api;
 
+// Cache invalidation — call after create/update/delete operations
+export function invalidateCache(pattern?: string) {
+  if (pattern) {
+    for (const key of responseCache.keys()) {
+      if (key.includes(pattern)) responseCache.delete(key);
+    }
+  } else {
+    responseCache.clear();
+  }
+}
+
 // Auth
 export const authAPI = {
   register: (data: any) => api.post('/auth/register', data),
@@ -138,9 +211,9 @@ export const authAPI = {
 export const productsAPI = {
   list: (params?: any) => api.get('/products/', { params }),
   get: (id: number) => api.get(`/products/${id}`),
-  create: (data: any) => api.post('/products/', data),
-  update: (id: number, data: any) => api.put(`/products/${id}`, data),
-  delete: (id: number) => api.delete(`/products/${id}`),
+  create: (data: any) => { invalidateCache('/products/'); return api.post('/products/', data); },
+  update: (id: number, data: any) => { invalidateCache('/products/'); return api.put(`/products/${id}`, data); },
+  delete: (id: number) => { invalidateCache('/products/'); return api.delete(`/products/${id}`); },
   count: (params?: any) => api.get('/products/count', { params }),
 };
 
@@ -159,9 +232,9 @@ export const uploadAPI = {
 export const categoriesAPI = {
   list: () => api.get('/categories/'),
   get: (id: number) => api.get(`/categories/${id}`),
-  create: (data: any) => api.post('/categories/', data),
-  update: (id: number, data: any) => api.put(`/categories/${id}`, data),
-  delete: (id: number) => api.delete(`/categories/${id}`),
+  create: (data: any) => { invalidateCache('/categories/'); return api.post('/categories/', data); },
+  update: (id: number, data: any) => { invalidateCache('/categories/'); return api.put(`/categories/${id}`, data); },
+  delete: (id: number) => { invalidateCache('/categories/'); return api.delete(`/categories/${id}`); },
 };
 
 // Orders

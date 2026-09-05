@@ -22,7 +22,12 @@ export default function AdminOrders() {
 
   useEffect(() => {
     fetchOrders();
-    const interval = setInterval(() => fetchOrders(true), 5000);
+    // Poll every 15 seconds instead of 5, and pause when tab is hidden
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchOrders(true);
+      }
+    }, 15000);
     return () => clearInterval(interval);
   }, [statusFilter]);
 

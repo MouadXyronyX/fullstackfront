@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { HiOutlineSearch, HiOutlineAdjustments, HiOutlineX, HiOutlineChevronLeft, HiOutlineChevronRight } from 'react-icons/hi';
@@ -25,6 +25,19 @@ export default function ProductsPage() {
     max_price: '',
     is_available: '',
   });
+  const [searchInput, setSearchInput] = useState(filters.search);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Debounce search input — 300ms delay
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      if (searchInput !== filters.search) {
+        handleFilterChange('search', searchInput);
+      }
+    }, 300);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [searchInput]);
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
@@ -103,8 +116,8 @@ export default function ProductsPage() {
             <input
               type="text"
               placeholder="ابحث عن منتج..."
-              value={filters.search}
-              onChange={(e) => handleFilterChange('search', e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               className="input-field pr-12"
             />
           </div>

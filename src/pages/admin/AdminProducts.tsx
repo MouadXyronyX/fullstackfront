@@ -22,6 +22,7 @@ export default function AdminProducts() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [searchDebounced, setSearchDebounced] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<ProductForm>({ ...emptyForm });
@@ -29,15 +30,23 @@ export default function AdminProducts() {
   const [uploadingVariantIdx, setUploadingVariantIdx] = useState<number | null>(null);
   const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const variantFileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const fetchProducts = () => {
+  const fetchProducts = (searchTerm?: string) => {
     setLoading(true);
     const params: any = { limit: 200 };
-    if (search) params.search = search;
+    if (searchTerm) params.search = searchTerm;
     productsAPI.list(params).then(res => setProducts(res.data)).catch(() => {}).finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetchProducts(); }, [search]);
+  // Debounce search — 300ms
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setSearchDebounced(search), 300);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [search]);
+
+  useEffect(() => { fetchProducts(searchDebounced); }, [searchDebounced]);
   useEffect(() => { categoriesAPI.list().then(res => setCategories(res.data)).catch(() => {}); }, []);
 
   const openCreate = () => { setEditingId(null); setForm({ ...emptyForm }); setShowModal(true); };
