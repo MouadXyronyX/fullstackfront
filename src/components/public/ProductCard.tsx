@@ -51,20 +51,12 @@ export default function ProductCard({ product, index = 0 }: Props) {
             </span>
           )}
 
-          {/* Actions */}
-          <div className="absolute bottom-3 left-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            <button
-              onClick={handleAddToCart}
-              disabled={!product.is_available}
-              className="flex-1 gold-btn text-xs py-2 flex items-center justify-center gap-1"
-            >
-              <HiOutlineShoppingBag className="w-4 h-4" />
-              أضف إلى السلة
-            </button>
-            <span className="flex items-center justify-center w-10 h-10 gold-border rounded-lg text-gold bg-dark-800/80">
-              <HiOutlineEye className="w-4 h-4" />
+            {/* Variant indicator - shows number of variants available */}
+          {product.variants && product.variants.length > 0 && (
+            <span className="absolute bottom-3 left-3 px-2 py-0.5 bg-gold/20 text-gold text-xs rounded-full border border-gold/40">
+              {product.variants.length} اختلافات متاحة
             </span>
-          </div>
+          )}
         </div>
 
         {/* Info */}
