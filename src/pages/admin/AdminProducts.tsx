@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HiOutlinePencil, HiOutlineTrash, HiOutlinePlus, HiOutlineSearch, HiOutlinePhotograph } from 'react-icons/hi';
+import { HiOutlinePencil, HiOutlineTrash, HiOutlinePlus, HiOutlineSearch, HiOutlinePhotograph, HiOutlineLink, HiOutlineCheck } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import { productsAPI, categoriesAPI, uploadAPI } from '../../services/api';
 import { Product, ProductVariant, Category } from '../../types';
@@ -28,6 +28,7 @@ export default function AdminProducts() {
   const [form, setForm] = useState<ProductForm>({ ...emptyForm });
   const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
   const [uploadingVariantIdx, setUploadingVariantIdx] = useState<number | null>(null);
+  const [copiedId, setCopiedId] = useState<number | null>(null);
   const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const variantFileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -95,6 +96,25 @@ export default function AdminProducts() {
     if (!window.confirm('هل أنت متأكد؟')) return;
     try { await productsAPI.delete(id); toast.success('تم الحذف'); fetchProducts(); }
     catch { toast.error('فشل الحذف'); }
+  };
+
+  const handleCopyUrl = async (p: Product) => {
+    const url = `${window.location.origin}/products/${p.id}`;
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = url;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+    setCopiedId(p.id);
+    toast.success('تم نسخ رابط المنتج');
+    setTimeout(() => setCopiedId(null), 1500);
   };
 
   const handleImageUpload = async (idx: number, file: File) => {
@@ -183,6 +203,9 @@ export default function AdminProducts() {
                   <td className="py-3"><span className={`px-2 py-0.5 rounded-full text-xs ${p.is_available ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>{p.is_available ? 'متوفر' : 'غير متوفر'}</span></td>
                   <td className="py-3">
                     <div className="flex items-center gap-2">
+                      <button onClick={() => handleCopyUrl(p)} title="نسخ رابط المنتج" className="p-2 text-cream/60 hover:text-gold transition-colors">
+                        {copiedId === p.id ? <HiOutlineCheck className="w-4 h-4 text-green-400" /> : <HiOutlineLink className="w-4 h-4" />}
+                      </button>
                       <button onClick={() => openEdit(p)} className="p-2 text-blue-400/60 hover:text-blue-400"><HiOutlinePencil className="w-4 h-4" /></button>
                       <button onClick={() => handleDelete(p.id)} className="p-2 text-red-400/60 hover:text-red-400"><HiOutlineTrash className="w-4 h-4" /></button>
                     </div>
